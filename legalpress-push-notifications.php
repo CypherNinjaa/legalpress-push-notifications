@@ -3,7 +3,7 @@
  * Plugin Name: LegalPress Push Notifications
  * Plugin URI: https://lawandbeyond.in/
  * Description: Web Push Notifications for WordPress - Send browser notifications to subscribers when new posts are published.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Law & Beyond
  * Author URI: https://lawandbeyond.in/
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LEGALPRESS_PUSH_VERSION', '1.2.0');
+define('LEGALPRESS_PUSH_VERSION', '1.2.1');
 define('LEGALPRESS_PUSH_DIR', plugin_dir_path(__FILE__));
 define('LEGALPRESS_PUSH_URL', plugin_dir_url(__FILE__));
 define('LEGALPRESS_PUSH_BASENAME', plugin_basename(__FILE__));
