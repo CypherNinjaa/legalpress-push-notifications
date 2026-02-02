@@ -3,7 +3,7 @@
  * Plugin Name: LegalPress Push Notifications
  * Plugin URI: https://lawandbeyond.in/
  * Description: Web Push Notifications for WordPress - Send browser notifications to subscribers when new posts are published.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Law & Beyond
  * Author URI: https://lawandbeyond.in/
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('LEGALPRESS_PUSH_VERSION', '1.1.0');
+define('LEGALPRESS_PUSH_VERSION', '1.2.0');
 define('LEGALPRESS_PUSH_DIR', plugin_dir_path(__FILE__));
 define('LEGALPRESS_PUSH_URL', plugin_dir_url(__FILE__));
 define('LEGALPRESS_PUSH_BASENAME', plugin_basename(__FILE__));
@@ -567,6 +567,38 @@ function legalpress_push_admin_page()
     $vapid_public = get_option('legalpress_vapid_public_key', '');
     $vapid_private = get_option('legalpress_vapid_private_key', '');
     
+    // Handle plugin update check
+    $update_message = '';
+    $update_info = null;
+    
+    if (isset($_POST['legalpress_check_update']) && wp_verify_nonce($_POST['_wpnonce'], 'legalpress_check_update')) {
+        delete_site_transient('update_plugins');
+        wp_update_plugins();
+        $update_message = __('Update check completed!', 'legalpress-push');
+    }
+    
+    if (isset($_POST['legalpress_force_update']) && wp_verify_nonce($_POST['_wpnonce'], 'legalpress_force_update')) {
+        // Force update by triggering the WordPress updater
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        
+        $upgrader = new Plugin_Upgrader(new WP_Ajax_Upgrader_Skin());
+        $result = $upgrader->upgrade(LEGALPRESS_PUSH_BASENAME);
+        
+        if (!is_wp_error($result) && $result !== false) {
+            $update_message = __('Plugin updated successfully! Page will reload...', 'legalpress-push');
+            echo '<script>setTimeout(function(){ window.location.reload(); }, 2000);</script>';
+        } else {
+            $update_message = __('Update failed. Please try updating from the Plugins page.', 'legalpress-push');
+        }
+    }
+    
+    // Get update info
+    $update_plugins = get_site_transient('update_plugins');
+    if (isset($update_plugins->response[LEGALPRESS_PUSH_BASENAME])) {
+        $update_info = $update_plugins->response[LEGALPRESS_PUSH_BASENAME];
+    }
+    
     // Handle VAPID key generation
     if (isset($_POST['legalpress_generate_vapid']) && wp_verify_nonce($_POST['_wpnonce'], 'legalpress_generate_vapid')) {
         if ($library_available) {
@@ -641,6 +673,57 @@ function legalpress_push_admin_page()
                 <p><?php _e('Failed to generate VAPID keys.', 'legalpress-push'); ?></p>
             </div>
         <?php endif; ?>
+
+        <?php if (!empty($update_message)): ?>
+            <div class="notice notice-info is-dismissible">
+                <p><?php echo esc_html($update_message); ?></p>
+            </div>
+        <?php endif; ?>
+
+        <!-- Plugin Update Card -->
+        <div class="card" style="max-width: 600px; margin-bottom: 20px;">
+            <h2><?php _e('Plugin Update', 'legalpress-push'); ?></h2>
+            <table class="widefat" style="border: none;">
+                <tr>
+                    <td><strong><?php _e('Current Version', 'legalpress-push'); ?></strong></td>
+                    <td><code><?php echo esc_html(LEGALPRESS_PUSH_VERSION); ?></code></td>
+                </tr>
+                <tr>
+                    <td><strong><?php _e('Update Status', 'legalpress-push'); ?></strong></td>
+                    <td>
+                        <?php if ($update_info): ?>
+                            <span style="color: #dba617; font-weight: bold;">
+                                ⬆ <?php printf(__('Version %s available!', 'legalpress-push'), esc_html($update_info->new_version)); ?>
+                            </span>
+                        <?php else: ?>
+                            <span style="color: green;">✔ <?php _e('Up to date', 'legalpress-push'); ?></span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            </table>
+            <p style="margin-top: 15px; display: flex; gap: 10px;">
+                <form method="post" style="display: inline;">
+                    <?php wp_nonce_field('legalpress_check_update'); ?>
+                    <button type="submit" name="legalpress_check_update" class="button button-secondary">
+                        🔄 <?php _e('Check for Updates', 'legalpress-push'); ?>
+                    </button>
+                </form>
+                <?php if ($update_info): ?>
+                    <form method="post" style="display: inline;">
+                        <?php wp_nonce_field('legalpress_force_update'); ?>
+                        <button type="submit" name="legalpress_force_update" class="button button-primary">
+                            ⬆ <?php printf(__('Update to %s', 'legalpress-push'), esc_html($update_info->new_version)); ?>
+                        </button>
+                    </form>
+                <?php endif; ?>
+            </p>
+            <p class="description">
+                <?php _e('Updates are fetched from GitHub releases.', 'legalpress-push'); ?>
+                <a href="https://github.com/CypherNinjaa/legalpress-push-notifications/releases" target="_blank">
+                    <?php _e('View releases →', 'legalpress-push'); ?>
+                </a>
+            </p>
+        </div>
 
         <!-- Status Card -->
         <div class="card" style="max-width: 600px; margin-bottom: 20px;">
